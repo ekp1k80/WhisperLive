@@ -10,6 +10,8 @@ from websockets.sync.server import serve
 from websockets.exceptions import ConnectionClosed
 from whisper_live.vad import VoiceActivityDetector
 from whisper_live.transcriber import WhisperModel
+import asyncio
+
 try:
     from whisper_live.transcriber_tensorrt import WhisperTRTLLM
 except Exception:
@@ -485,6 +487,17 @@ class ServeClientBase(object):
         """
         return input_bytes.shape[0] / self.RATE
 
+    async def send_segments_cracker_server(json):
+        response = requests.post('http://127.0.0.1:3002/websocket', data=json_data)
+
+        # Verificar si la solicitud fue exitosa (código de estado 200)
+        if response.status_code == 200:
+            # Imprimir la respuesta en formato JSON si es aplicable
+            print(response.json())
+        else:
+            # Imprimir un mensaje de error si la solicitud no fue exitosa
+            print("Error al realizar la solicitud:", response.status_code)
+
     def send_transcription_to_client(self, segments):
         """
         Sends the specified transcription segments to the client over the websocket connection.
@@ -496,12 +509,13 @@ class ServeClientBase(object):
             segments (list): A list of transcription segments to be sent to the client.
         """
         try:
-            self.websocket.send(
-                json.dumps({
-                    "uid": self.client_uid,
-                    "segments": segments,
-                })
-            )
+            json = json.dumps({
+                "uid": self.client_uid,
+                "segments": segments,
+            })
+            self.websocket.send(json)
+            self.send_segments_cracker_server(json)
+
         except Exception as e:
             logging.error(f"[ERROR]: Sending data to client: {e}")
 
